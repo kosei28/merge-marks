@@ -29,7 +29,7 @@ function mergeMarks(text: string, marks: Mark[]): Segment[] {
     // ポイントをソートして順に処理
     const sortedPoints = Array.from(points.keys()).sort((a, b) => a - b);
     const segments: Segment[] = [];
-    let currentMarks: Set<string> = new Set();
+    let currentMarks: Map<string, { count: number }> = new Map();
     let lastIndex = 0;
 
     sortedPoints.forEach((point) => {
@@ -38,20 +38,30 @@ function mergeMarks(text: string, marks: Mark[]): Segment[] {
         if (point > lastIndex) {
             segments.push({
                 text: text.substring(lastIndex, point),
-                marks: Array.from(currentMarks),
+                marks: Array.from(currentMarks.keys()),
             });
             lastIndex = point;
         }
         // 現在の修飾を更新
-        start.forEach((type) => currentMarks.add(type));
-        end.forEach((type) => currentMarks.delete(type));
+        start.forEach((type) => {
+            if (!currentMarks.has(type)) {
+                currentMarks.set(type, { count: 0 });
+            }
+            currentMarks.get(type)!.count++;
+        });
+        end.forEach((type) => {
+            currentMarks.get(type)!.count--;
+            if (currentMarks.get(type)!.count === 0) {
+                currentMarks.delete(type);
+            }
+        });
     });
 
     // 最後のセグメントを追加
     if (lastIndex < text.length) {
         segments.push({
             text: text.substring(lastIndex, text.length),
-            marks: Array.from(currentMarks),
+            marks: Array.from(currentMarks.keys()),
         });
     }
 
@@ -63,6 +73,7 @@ const text = 'あいうえおかきくけこ';
 const marks: Mark[] = [
     { start: 2, end: 6, type: 'bold' },
     { start: 4, end: 8, type: 'italic' },
+    { start: 5, end: 7, type: 'bold' },
 ];
 
 console.log(mergeMarks(text, marks));
@@ -76,10 +87,16 @@ console.log(mergeMarks(text, marks));
         text: "うえ",
         marks: [ "bold" ]
     }, {
-        text: "おか",
+        text: "お",
         marks: [ "bold", "italic" ]
     }, {
-        text: "きく",
+        text: "か",
+        marks: [ "bold", "italic" ]
+    }, {
+        text: "き",
+        marks: [ "bold", "italic" ]
+    }, {
+        text: "く",
         marks: [ "italic" ]
     }, {
         text: "けこ",
